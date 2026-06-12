@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: printer-agent-worker
+  namespace: universal-print
+  labels:
+    app: printer-agent-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: printer-agent-worker
+  template:
+    metadata:
+      labels:
+        app: printer-agent-worker
+    spec:
+      containers:
+        - name: agent-worker
+          image: registry-local.flextronassembly.net/q2c/universal-print-agent:0.0.2
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+          # Environmental overrides from configuration sets
+          envFrom:
+            - configMapRef:
+                name: printer-agent-config
+            - secretRef:
+                name: printer-agent-secret
+      imagePullSecrets:
+        - name: harbor-auth      
+      
+      restartPolicy: Always

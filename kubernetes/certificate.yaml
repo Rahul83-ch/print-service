@@ -1,0 +1,23 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: printer-portal-cert
+  namespace: universal-print
+spec:
+  secretName: printer-portal-tls
+  issuerRef:
+    name: selfsigned
+    kind: Issuer
+  commonName: print-portal.local.flextronassembly.net
+  dnsNames:
+    - print-portal.local.flextronassembly.net
+
+---
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned
+  namespace: universal-print
+spec:
+  selfSigned: {}

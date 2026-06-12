@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: printer-agent-config
+  namespace: universal-print
+  labels:
+    app: printer-agent-worker
+data:
+  # Map variables with __ structure to inject cleanly as settings on .NET Core Startup
+  AgentSettings__AgentId: "K8S-CENTRAL-AGENT-001"
+  AgentSettings__AgentName: "K8s Surat Printing Agent"
+  AgentSettings__PollingIntervalSeconds: "5"
+  AgentSettings__HeartbeatIntervalSeconds: "60"
+  ApiSettings__BaseUrl: "http://174.156.5.161:5000"

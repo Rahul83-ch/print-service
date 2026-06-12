@@ -1,0 +1,33 @@
+# version: '3.8'
+
+services:
+  # 1. Interactive Visual Portal Dashboard & Simulators
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: print-portal-frontend
+    image: "registry-local.flextronassembly.net/q2c/print-portal-frontend:0.0.2"
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    restart: always
+
+  # 2. .NET 8 Background Worker Service Client Daemon
+  print-agent:
+    build:
+      context: ./UniversalPrint.Agent
+      dockerfile: Dockerfile
+    container_name: universal-print-agent
+    image: "registry-local.flextronassembly.net/q2c/universal-print-agent:0.0.2"
+    environment:
+      - AgentSettings__AgentId=AGENT-DOCKER-001
+      - AgentSettings__AgentName=Docker Compose Print Agent
+      - AgentSettings__PollingIntervalSeconds=5
+      - AgentSettings__HeartbeatIntervalSeconds=60
+      - ApiSettings__BaseUrl=http://host.docker.internal:5000 # Specify central tracking server url
+      - ApiSettings__ApiKey=up_sec_live_9108a73bcde02f # Secure platform credential authorization
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always

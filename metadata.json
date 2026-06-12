@@ -1,0 +1,8 @@
+{
+  "name": "Remix: UniversalPrint.Agent",
+  "description": "Enterprise-grade .NET 8 Print Agent with Clean Architecture, containing interactive physical simulators, structural code browsers, and detailed architectural diagrams.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
