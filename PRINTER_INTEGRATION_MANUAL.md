@@ -244,6 +244,20 @@ Instead of feeding raw bytes to a direct network socket bypass (Port 9100), conf
 2. In your print request payload, specify **`"printerType": "WindowsPrinter"`** and **`"contentType": "PDF"`**.
 3. The Universal Print Agent's `WindowsPrinterConnector` uses the Windows GDI Spooler API. It hands the PDF file cleanly over to the OS. The TVS/Epson Windows Printer Driver then handles the scaling, anti-aliasing, layout fitting, and rasterization automatically before transferring the printhead instructions. 
 
+### Pattern C: Linux / CUPS Driver Spooler-Side Rendering (Best for Kubernetes/Linux Deployments)
+When deploying the print agent to a headless Linux server or a **Kubernetes (K8s)** cluster, you can utilize the industry-standard **CUPS (Common UNIX Printing System)** print server integrated directly into our agent's Docker container.
+
+1. **How It Works**:
+   * Our container contains a fully configured background CUPS daemon (`cupsd`) along with essential open-source drivers (`gutenprint`, `printer-driver-escpr` for Epson/TVS, `ghostscript`, `poppler-utils`, etc.).
+   * In your print job configuration, specify **`"printerType": "WindowsPrinter"`** and **`"contentType": "PDF"`**.
+   * When a print job is received, the agent's Linux spooler engine automatically checks if the printer (e.g. `EPSONF4C193`) is registered in CUPS.
+   * If not registered, the agent uses the `lpadmin` utility to **dynamically register the printer on-the-fly** at `socket://[PrinterIP]:[Port]` using the correct hardware driver or IPP Everywhere.
+   * The PDF is then cleanly spooled to the printer using the Linux `lp` system command. CUPS automatically compiles, rasterizes, and formats the vector PDF data into native raster commands before streaming it to the physical printer.
+2. **Advantages**:
+   * Zero manual printer setup inside the Kubernetes cluster.
+   * Perfect, high-fidelity PDF rendering (including barcodes, graphics, and custom fonts) using official Linux drivers (like Epson ESC/P-R).
+   * Supports multiple printer brands and models concurrently.
+
 ---
 
 ## 8. Verification Checklist & Troubleshooting
