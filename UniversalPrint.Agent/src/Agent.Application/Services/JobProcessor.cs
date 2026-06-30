@@ -25,18 +25,18 @@ namespace Agent.Application.Services
     {
         private readonly IAgentApiClient _apiClient;
         private readonly IPrinterManager _printerManager;
-        private readonly IEnumerable<IPrinterConnector> _connectors;
+        private readonly IPrinterService _printerService;
         private readonly ILogger<JobProcessor> _logger;
 
         public JobProcessor(
             IAgentApiClient apiClient,
             IPrinterManager printerManager,
-            IEnumerable<IPrinterConnector> connectors,
+            IPrinterService printerService,
             ILogger<JobProcessor> logger)
         {
             _apiClient = apiClient;
             _printerManager = printerManager;
-            _connectors = connectors;
+            _printerService = printerService;
             _logger = logger;
         }
 
@@ -70,6 +70,7 @@ namespace Agent.Application.Services
                         PrinterType = jobDto.PrinterType,
                         Copies = jobDto.Copies,
                         ContentType = jobDto.ContentType,
+                        Encoding = jobDto.Encoding,
                         PrintContent = jobDto.PrintContent,
                         SubmittedOn = jobDto.SubmittedOn,
                         Status = JobStatus.Pending
@@ -89,10 +90,10 @@ namespace Agent.Application.Services
         /// </summary>
         private async Task ProcessSingleJobWithResilienceAsync(PrintJob job, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Starting execution scope for Job '{JobId}' (Target: Printer '{PrinterId}').", 
+            _logger.LogInformation("Job received: Starting execution scope for Job '{JobId}' (Target: Printer '{PrinterId}').", 
                 job.JobId, job.PrinterId);
 
-            // 1. Fetch & Verify Printer Profile
+            // 1. Fetch & Verify Printer Profile (required for correct logging and early validation responses)
             var printer = await _printerManager.GetPrinterAsync(job.PrinterId, cancellationToken);
             if (printer == null)
             {
@@ -110,22 +111,7 @@ namespace Agent.Application.Services
                 return;
             }
 
-            // 2. Select Appropriate Printer Connector Strategy
-            var connectorName = $"{job.PrinterType}PrinterConnector";
-            var connector = _connectors.FirstOrDefault(c => 
-                c.GetType().Name.Equals(connectorName, StringComparison.OrdinalIgnoreCase) ||
-                (job.PrinterType == PrinterType.Zebra && c.GetType().Name.Contains("Zebra"))
-            );
-
-            if (connector == null)
-            {
-                var error = $"Unsupported Type: No loaded adapter discovered for connector strategy '{connectorName}'.";
-                _logger.LogError(error);
-                await SafeMarkJobFailedAsync(job.JobId, error, cancellationToken);
-                return;
-            }
-
-            // 3. Define Polly Resilience Strategy
+            // 2. Define Polly Resilience Strategy
             // We combine short Retries (with exponential backoff) with a Circuit Breaker targeting socket failures.
             var retryPolicy = Policy
                 .Handle<SocketException>()
@@ -147,20 +133,20 @@ namespace Agent.Application.Services
             try
             {
                 job.Status = JobStatus.Printing;
-                _logger.LogInformation("Relaying streaming payload to device {IP}:{Port} under {Strategy} mode.", 
-                    printer.IPAddress, printer.Port, connector.GetType().Name);
+                _logger.LogInformation("Printing started: Content Type '{ContentType}' selected for Printer at {IP}:{Port}.", 
+                    job.ContentType, printer.IPAddress, printer.Port);
 
-                // Execute physical printer channel stream
+                // Execute physical printer channel stream via the unified strategy interface
                 await combinedPolicy.ExecuteAsync(async (ctx) => 
                 {
-                    await connector.PrintAsync(job, printer, cancellationToken);
+                    await _printerService.PrintJobAsync(job, cancellationToken);
                 }, new Context());
 
-                // 4. Update Remote API on Success
+                // 3. Update Remote API on Success
                 job.Status = JobStatus.Printed;
                 job.ProcessedAt = DateTime.UtcNow;
 
-                _logger.LogInformation("Job '{JobId}' printed successfully with {Copies} copy/copies. Sending confirmation...", 
+                _logger.LogInformation("Printing completed: Job '{JobId}' printed successfully with {Copies} copy/copies. Sending confirmation...", 
                     job.JobId, job.Copies);
 
                 await _apiClient.MarkJobCompletedAsync(job.JobId, cancellationToken);
@@ -174,8 +160,8 @@ namespace Agent.Application.Services
             }
             catch (Exception ex)
             {
-                var error = $"Communication Error: Failed to transmit TCP packets to {printer.IPAddress}:{printer.Port}. Reason: {ex.Message}";
-                _logger.LogError(ex, "Physical connection error processing printer socket broadcast.");
+                var error = $"Printer connection failed: Unable to connect {printer.IPAddress}:{printer.Port}. Reason: {ex.Message}";
+                _logger.LogError(ex, "Physical connection error processing printer socket broadcast. Failure reason details submitted.");
                 await SafeMarkJobFailedAsync(job.JobId, error, cancellationToken);
             }
         }

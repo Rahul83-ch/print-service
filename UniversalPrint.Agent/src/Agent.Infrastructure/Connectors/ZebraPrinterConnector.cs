@@ -46,19 +46,20 @@ namespace Agent.Infrastructure.Connectors
             }
 
             byte[] byteBuffer = Encoding.UTF8.GetBytes(finalZplPayload);
+            await PrintBytesAsync(byteBuffer, printer, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task PrintBytesAsync(byte[] bytes, Printer printer, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("ZebraPrinterConnector sending raw bytes stream to {IP}:{Port} (Length: {ByteLength} bytes)", 
+                printer.IPAddress, printer.Port, bytes.Length);
 
             using var tcpClient = new TcpClient();
-            
-            // Connect to Port 9100 (Default raw driver printer socket)
-            _logger.LogDebug("Opening socket channel to {IP}:{Port}...", printer.IPAddress, printer.Port);
-            
-            // In .NET 8, ConnectAsync supports cancellation tokens natively
             await tcpClient.ConnectAsync(printer.IPAddress, printer.Port, cancellationToken);
             
             using NetworkStream networkStream = tcpClient.GetStream();
-            
-            _logger.LogDebug("TCP session established. Flashing {ByteLength} bytes block to equipment buffers...", byteBuffer.Length);
-            await networkStream.WriteAsync(byteBuffer.AsMemory(0, byteBuffer.Length), cancellationToken);
+            await networkStream.WriteAsync(bytes.AsMemory(0, bytes.Length), cancellationToken);
             await networkStream.FlushAsync(cancellationToken);
             
             _logger.LogInformation("Flash buffer transmission completed successfully for Zebra Printer '{PrinterId}'.", printer.PrinterId);

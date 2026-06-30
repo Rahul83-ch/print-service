@@ -14,7 +14,8 @@ namespace Agent.Domain.Enums
         Brother,
         TSC,
         PDF,
-        WindowsPrinter
+        WindowsPrinter,
+        ESC_POS
     }
 
     /// <summary>
@@ -25,7 +26,8 @@ namespace Agent.Domain.Enums
         ZPL,
         PDF,
         RAW,
-        TEXT
+        TEXT,
+        ESC_POS
     }
 
     /// <summary>

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: agent-worker
-          image: registry-local.flextronassembly.net/q2c/universal-print-agent:0.0.2
+          image: registry-local.flextronassembly.net/q2c/universal-print-agent:0.0.7
           imagePullPolicy: IfNotPresent
           resources:
             requests:

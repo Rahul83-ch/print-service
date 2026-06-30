@@ -20,6 +20,11 @@ namespace Agent.Application.Interfaces
         Task PrintAsync(PrintJob job, Printer printer, CancellationToken cancellationToken);
 
         /// <summary>
+        /// Sends raw byte sequences directly over tcp socket or specified channel.
+        /// </summary>
+        Task PrintBytesAsync(byte[] bytes, Printer printer, CancellationToken cancellationToken);
+
+        /// <summary>
         /// Attempts to establish a lightweight handshake to probe hardware state.
         /// </summary>
         Task<bool> ValidateConnectionAsync(Printer printer, CancellationToken cancellationToken);

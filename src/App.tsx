@@ -33,7 +33,7 @@ import {
 interface Printer {
   id: string;
   name: string;
-  type: "Zebra" | "Brother" | "TSC" | "PDF" | "WindowsPrinter";
+  type: "Zebra" | "Brother" | "TSC" | "PDF" | "WindowsPrinter" | "ESC_POS";
   ipAddress: string;
   port: number;
   isActive: boolean;
@@ -45,7 +45,8 @@ interface SimulatedJob {
   printerId: string;
   printerType: string;
   copies: number;
-  contentType: "ZPL" | "PDF" | "RAW" | "TEXT";
+  contentType: "ZPL" | "PDF" | "RAW" | "TEXT" | "ESC_POS";
+  encoding?: string;
   printContent: string;
   submittedOn: string;
   status: "Pending" | "Printing" | "Printed" | "Failed";
@@ -63,10 +64,14 @@ export default function App() {
   // Navigation
   const [activeTab, setActiveTab] = useState<"dashboard" | "explorer" | "architecture" | "deployment">("dashboard");
 
+  // Live Integration States
+  const [isLiveMode, setIsLiveMode] = useState<boolean>(false);
+  const [connectedAgents, setConnectedAgents] = useState<any[]>([]);
+
   // Local printer configurations
   const [printers, setPrinters] = useState<Printer[]>([
-    { id: "AHEPS-3150", name: "Epson L3150 Series (Network RAW)ASH", type: "Zebra", ipAddress: "192.168.1.150", port: 9100, isActive: true, isOnline: true },
-    { id: "EPS-3150", name: "Epson L3150 Series (Network RAW)", type: "Zebra", ipAddress: "174.156.6.177", port: 9100, isActive: true, isOnline: true },
+    { id: "TVS3150", name: "TVS Electronics RP3150 STAR (ESC/POS)", type: "ESC_POS", ipAddress: "127.0.0.1", port: 9100, isActive: true, isOnline: true },
+    { id: "EPS-3150", name: "Epson L3150 Series (Network RAW)", type: "ESC_POS", ipAddress: "174.156.6.177", port: 9100, isActive: true, isOnline: true },
     { id: "ZBR-001", name: "Shipping Zebra ZD420", type: "Zebra", ipAddress: "192.168.1.100", port: 9100, isActive: true, isOnline: true },
     { id: "ZBR-002", name: "Warehouse Zebra ZT410", type: "Zebra", ipAddress: "192.168.1.101", port: 9100, isActive: true, isOnline: true },
     { id: "TSC-001", name: "Assembly Line TSC TTP-247", type: "TSC", ipAddress: "192.168.1.102", port: 9100, isActive: true, isOnline: false }, // Simulated offline for retry demos!
@@ -77,6 +82,7 @@ export default function App() {
   // Simulated queue and agent activity
   const [isAgentRunning, setIsAgentRunning] = useState<boolean>(true);
   const [pollingSeconds, setPollingSeconds] = useState<number>(3); // slightly accelerated for snappy demo
+  const [autoScroll, setAutoScroll] = useState<boolean>(true);
   const [apiLogs, setApiLogs] = useState<LogLine[]>([
     { timestamp: getSimulatedTime(), level: "INFO", message: "====================================================================" },
     { timestamp: getSimulatedTime(), level: "INFO", message: "UniversalPrint.Agent Service starting..." },
@@ -121,20 +127,65 @@ export default function App() {
   const [formContent, setFormContent] = useState<string>(
     "^XA\n^FO50,60^A0N,32,32^FDINV-ITEM-90184^FS\n^FO50,110^BY2\n^BCN,70,Y,N,N\n^FD90184^FS\n^XZ"
   );
-  const [formContentType, setFormContentType] = useState<"ZPL" | "PDF" | "RAW" | "TEXT">("ZPL");
+  const [formContentType, setFormContentType] = useState<"ZPL" | "PDF" | "RAW" | "TEXT" | "ESC_POS">("ZPL");
+  const [formEncoding, setFormEncoding] = useState<"NONE" | "BASE64">("NONE");
 
   // Console layout automatic self scroll
-  const consoleBottomRef = useRef<HTMLDivElement>(null);
+  const consoleContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (consoleBottomRef.current) {
-      consoleBottomRef.current.scrollIntoView({ behavior: "smooth" });
+    if (autoScroll && consoleContainerRef.current) {
+      consoleContainerRef.current.scrollTop = consoleContainerRef.current.scrollHeight;
     }
-  }, [apiLogs]);
+  }, [apiLogs, autoScroll]);
 
-  // Dynamic Polling clock cycle simulation
+  // 1. Dynamic Polling synchronization with full-stack Express API
   useEffect(() => {
-    if (!isAgentRunning) return;
+    const handleSync = async () => {
+      try {
+        const response = await fetch("/api/state");
+        if (response.ok) {
+          const data = await response.json();
+          setIsLiveMode(true);
+          if (data.printers) {
+            setPrinters(data.printers);
+          }
+          if (data.agents) {
+            setConnectedAgents(data.agents);
+          }
+          if (data.apiLogs) {
+            setApiLogs(data.apiLogs);
+          }
+          if (data.jobs) {
+            setActiveJobs(data.jobs.map((j: any) => ({
+              id: j.id,
+              printerId: j.printerId,
+              printerType: j.printerType,
+              copies: j.copies,
+              contentType: j.contentType,
+              printContent: j.printContent,
+              submittedOn: j.submittedOn,
+              status: j.status,
+              errorMessage: j.errorMessage,
+              logs: j.logs
+            })));
+          }
+        } else {
+          setIsLiveMode(false);
+        }
+      } catch (err) {
+        setIsLiveMode(false);
+      }
+    };
+
+    handleSync();
+    const interval = setInterval(handleSync, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 2. Dynamic Polling clock cycle simulation (used only when in local fallback mode)
+  useEffect(() => {
+    if (isLiveMode || !isAgentRunning) return;
 
     const interval = setInterval(() => {
       // Look for first pending job
@@ -148,11 +199,11 @@ export default function App() {
     }, pollingSeconds * 1000);
 
     return () => clearInterval(interval);
-  }, [isAgentRunning, activeJobs, pollingSeconds]);
+  }, [isLiveMode, isAgentRunning, activeJobs, pollingSeconds]);
 
   // Simulated heartbeat loop (every 20s in demo for visibility)
   useEffect(() => {
-    if (!isAgentRunning) return;
+    if (isLiveMode || !isAgentRunning) return;
 
     const interval = setInterval(() => {
       addAgentLog("DEBUG", "Transmitting telemetry ping... status: Running, machine: IND-BLR-FACTORY-01");
@@ -160,7 +211,7 @@ export default function App() {
     }, 25000);
 
     return () => clearInterval(interval);
-  }, [isAgentRunning]);
+  }, [isLiveMode, isAgentRunning]);
 
   function getSimulatedTime(): string {
     const d = new Date();
@@ -177,48 +228,91 @@ export default function App() {
   }
 
   // Handle printer state changes
-  const togglePrinterOnline = (id: string) => {
-    setPrinters(prev => prev.map(p => {
-      if (p.id === id) {
-        const nextState = !p.isOnline;
-        addAgentLog("WARNING", `Hardware diagnostics state update: Printer '${p.id}' (${p.name}) connection changed to ${nextState ? "ONLINE" : "OFFLINE"}`);
-        return { ...p, isOnline: nextState };
+  const togglePrinterOnline = async (id: string) => {
+    if (isLiveMode) {
+      try {
+        await fetch("/api/printers/toggle-online", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id })
+        });
+      } catch (e) {
+        console.error("Failed to toggle online status", e);
       }
-      return p;
-    }));
+    } else {
+      setPrinters(prev => prev.map(p => {
+        if (p.id === id) {
+          const nextState = !p.isOnline;
+          addAgentLog("WARNING", `Hardware diagnostics state update: Printer '${p.id}' (${p.name}) connection changed to ${nextState ? "ONLINE" : "OFFLINE"}`);
+          return { ...p, isOnline: nextState };
+        }
+        return p;
+      }));
+    }
   };
 
-  const togglePrinterActive = (id: string) => {
-    setPrinters(prev => prev.map(p => {
-      if (p.id === id) {
-        const nextState = !p.isActive;
-        addAgentLog("INFO", `Administrative configuration: Printer '${p.id}' (${p.name}) lock is now ${nextState ? "ENABLED/ACTIVE" : "DISABLED/INACTIVE"}`);
-        return { ...p, isActive: nextState };
+  const togglePrinterActive = async (id: string) => {
+    if (isLiveMode) {
+      try {
+        await fetch("/api/printers/toggle-active", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id })
+        });
+      } catch (e) {
+        console.error("Failed to toggle active status", e);
       }
-      return p;
-    }));
+    } else {
+      setPrinters(prev => prev.map(p => {
+        if (p.id === id) {
+          const nextState = !p.isActive;
+          addAgentLog("INFO", `Administrative configuration: Printer '${p.id}' (${p.name}) lock is now ${nextState ? "ENABLED/ACTIVE" : "DISABLED/INACTIVE"}`);
+          return { ...p, isActive: nextState };
+        }
+        return p;
+      }));
+    }
   };
 
   // Create simulated print job
-  const handleAddNewJob = (e: React.FormEvent) => {
+  const handleAddNewJob = async (e: React.FormEvent) => {
     e.preventDefault();
     const targeted = printers.find(p => p.id === formPrinter);
     if (!targeted) return;
 
-    const newJob: SimulatedJob = {
-      id: `JOB-${Math.floor(1000 + Math.random() * 9000)}`,
-      printerId: formPrinter,
-      printerType: targeted.type,
-      copies: formCopies,
-      contentType: formContentType,
-      printContent: formContent,
-      submittedOn: getSimulatedTime(),
-      status: "Pending",
-      logs: []
-    };
+    if (isLiveMode) {
+      try {
+        await fetch("/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            printerId: formPrinter,
+            copies: formCopies,
+            contentType: formContentType,
+            encoding: formEncoding,
+            printContent: formContent
+          })
+        });
+      } catch (e) {
+        console.error("Failed to submit new print job to live backend", e);
+      }
+    } else {
+      const newJob: SimulatedJob = {
+        id: `JOB-${Math.floor(1000 + Math.random() * 9000)}`,
+        printerId: formPrinter,
+        printerType: targeted.type,
+        copies: formCopies,
+        contentType: formContentType,
+        encoding: formEncoding,
+        printContent: formContent,
+        submittedOn: getSimulatedTime(),
+        status: "Pending",
+        logs: []
+      };
 
-    setActiveJobs(prev => [newJob, ...prev]);
-    addAgentLog("INFO", `Server Central queue: Scheduled Job '${newJob.id}' directed to printer '${newJob.printerId}' (${newJob.copies} cop${newJob.copies > 1 ? 'ies' : 'y'})`);
+      setActiveJobs(prev => [newJob, ...prev]);
+      addAgentLog("INFO", `Server Central queue: Scheduled Job '${newJob.id}' directed to printer '${newJob.printerId}' (${newJob.copies} cop${newJob.copies > 1 ? 'ies' : 'y'})`);
+    }
   };
 
   // Simulate print executing with Polly resilience
@@ -300,7 +394,6 @@ export default function App() {
     addAgentLog("INFO", `Flash buffer transmission completed successfully for Zebra Printer '${targetPrinter.id}'.`);
     addAgentLog("INFO", `Job '${job.id}' printed successfully with ${job.copies} copy/copies. Sending confirmation...`);
     addAgentLog("INFO", `Platform successfully reconciled Job status for '${job.id}'.`);
-
     job.status = "Printed";
     setActiveJobs([...jobList]);
   };
@@ -308,12 +401,20 @@ export default function App() {
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   // Reset demo
-  const handleClearQueueAndLogs = () => {
-    setActiveJobs([]);
-    setApiLogs([
-      { timestamp: getSimulatedTime(), level: "INFO", message: "Simulated worker memory cleared." },
-      { timestamp: getSimulatedTime(), level: "INFO", message: "Polling loop active at standard frequency." }
-    ]);
+  const handleClearQueueAndLogs = async () => {
+    if (isLiveMode) {
+      try {
+        await fetch("/api/reset", { method: "POST" });
+      } catch (e) {
+        console.error("Failed to reset live server stats", e);
+      }
+    } else {
+      setActiveJobs([]);
+      setApiLogs([
+        { timestamp: getSimulatedTime(), level: "INFO", message: "Simulated worker memory cleared." },
+        { timestamp: getSimulatedTime(), level: "INFO", message: "Polling loop active at standard frequency." }
+      ]);
+    }
   };
 
   // Code Explorer Workspace File Database
@@ -1530,76 +1631,249 @@ namespace Agent.Worker
                   <PlusCircle size={18} className="text-[#0052CC]" /> Trigger Centralized Print Command
                 </h3>
                 
-                <form onSubmit={handleAddNewJob} className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  <div className="md:col-span-4">
-                    <label className="text-xs text-[#5E6C84] font-semibold uppercase block mb-1">Target Device</label>
-                    <select
-                      value={formPrinter}
-                      onChange={(e) => setFormPrinter(e.target.value)}
-                      className="w-full bg-[#F4F5F7] border border-[#DFE1E6] rounded px-3 py-2 text-xs focus:outline-none focus:border-[#0052CC] cursor-pointer"
-                    >
-                      {printers.map(p => (
-                        <option key={p.id} value={p.id}>{p.name} ({p.isActive ? (p.isOnline ? "Online" : "Offline") : "Locked"})</option>
-                      ))}
-                    </select>
-                  </div>
+                <form onSubmit={handleAddNewJob} className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+                  {/* Left Column: Form Controls */}
+                  <div className="xl:col-span-7 grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-8">
+                      <label className="text-xs text-[#5E6C84] font-semibold uppercase block mb-1">Target Device</label>
+                      <select
+                        value={formPrinter}
+                        onChange={(e) => setFormPrinter(e.target.value)}
+                        className="w-full bg-[#F4F5F7] border border-[#DFE1E6] rounded px-3 py-2 text-xs focus:outline-none focus:border-[#0052CC] text-[#091E42] cursor-pointer"
+                      >
+                        {printers.map(p => (
+                          <option key={p.id} value={p.id}>{p.name} ({p.isActive ? (p.isOnline ? "Online" : "Offline") : "Locked"})</option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div className="md:col-span-3">
-                    <label className="text-xs text-[#5E6C84] font-semibold uppercase block mb-1">Copies</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={formCopies}
-                      onChange={(e) => setFormCopies(Number(e.target.value))}
-                      className="w-full bg-[#F4F5F7] border border-[#DFE1E6] rounded px-3 py-2 text-xs focus:outline-none focus:border-[#0052CC]"
-                    />
-                  </div>
+                    <div className="md:col-span-4">
+                      <label className="text-xs text-[#5E6C84] font-semibold uppercase block mb-1">Copies</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={formCopies}
+                        onChange={(e) => setFormCopies(Number(e.target.value))}
+                        className="w-full bg-[#F4F5F7] border border-[#DFE1E6] rounded px-3 py-2 text-xs focus:outline-none focus:border-[#0052CC] text-[#091E42]"
+                      />
+                    </div>
 
-                  <div className="md:col-span-5">
-                    <label className="text-xs text-[#5E6C84] font-semibold uppercase block mb-1">Transceiver Format</label>
-                    <div className="flex space-x-2">
-                      {(["ZPL", "TEXT", "RAW", "PDF"] as const).map(fmt => (
-                        <button
-                          key={fmt}
-                          type="button"
-                          onClick={() => {
-                            setFormContentType(fmt);
-                            if (fmt === "ZPL") {
-                              setFormContent("^XA\n^FO50,60^A0N,32,32^FDINV-ITEM-90184^FS\n^FO50,110^BY2\n^BCN,70,Y,N,N\n^FD90184^FS\n^XZ");
-                            } else {
-                              setFormContent("RAW TEXT STREAM PAYLOAD\n======================\nQUANTITY: 15 UNITS\nPART ID: B-918-X");
-                            }
-                          }}
-                          className={`flex-1 py-1 cursor-pointer text-center text-xs font-semibold rounded border transition-all ${
-                            formContentType === fmt
-                              ? "bg-[#0052CC] text-white border-[#0052CC]"
-                              : "bg-[#F4F5F7] text-[#42526E] border-[#DFE1E6] hover:bg-[#EEF1F6]"
-                          }`}
-                        >
-                          {fmt}
-                        </button>
-                      ))}
+                    <div className="md:col-span-7">
+                      <label className="text-xs text-[#5E6C84] font-semibold uppercase block mb-1">Format</label>
+                      <div className="flex flex-wrap gap-1">
+                        {(["ZPL", "TEXT", "ESC_POS", "RAW", "PDF"] as const).map(fmt => (
+                          <button
+                            key={fmt}
+                            type="button"
+                            onClick={() => {
+                              setFormContentType(fmt);
+                              if (fmt === "ZPL") {
+                                setFormEncoding("NONE");
+                                setFormContent("^XA\n^FO50,60^A0N,32,32^FDINV-ITEM-90184^FS\n^FO50,110^BY2\n^BCN,70,Y,N,N\n^FD90184^FS\n^XZ");
+                              } else if (fmt === "ESC_POS") {
+                                setFormEncoding("BASE64");
+                                setFormContent("G0AbYQEdaDwddwMdSAAdawAxMjM0NTY3ODkwMTIAChtKUA==");
+                              } else if (fmt === "TEXT") {
+                                setFormEncoding("NONE");
+                                setFormContent("INVENTORY AUDIT REPORT\n----------------------\nItem Count: 42\nStatus: Verified\nAuditor: Central Agent");
+                              } else if (fmt === "PDF") {
+                                setFormEncoding("BASE64");
+                                setFormContent("JVBERi0xLjQKMSAwIG9iagogIDw8IC9UeXBlIC9DYXRhbG9nIC9QYWdlcyAyIDAgUiA+PgplbmRvYmoKMiAwIG9iagogIDw8IC9UeXBlIC9QYWdlcyAvS2lkcyBbMyAwIFJdIC9Db3VudCAxID4+CmVuZG9iagozIDAvYmoKICA8PCAvVHlwZSAvUGFnZSAvUGFyZW50IDIgMCBSIC9NZWRpYUJveCBbMCAwIDU5NSA4NDJdIC9SZXNvdXJjZXMgNCAwIFIgL0NvbnRlbnRzIDUgMCBSID4+CmVuZG9iago0IDAgb2JqCiAgPDwgL0ZvbnQgPDwgL0YxIDYgMCBSID4+ID4+CmVuZG9iago1IDAgb2JqCiAgPDwgL0xlbmd0aCA0NCA+PgpzdHJlYW0KQlQKICAvRjEgMTIgVGYKICA3MiA3MTIgVGQKICAoSGVsbG8sIFdvcmxkISkgVGoKRVQKZW5kc3RyZWFtCmVuZG9iago2IDAgb2JqCiAgPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNwowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTcgMDAwMDAgbiAKMDAwMDAwMDA3OSAwMDAwMCBuIAowMDAwMDAwMTM5IDAwMDAwIG4gCKeepdfsd...");
+                              } else {
+                                setFormEncoding("NONE");
+                                setFormContent("RAW TEXT STREAM PAYLOAD\n======================\nQUANTITY: 15 UNITS\nPART ID: B-918-X");
+                              }
+                            }}
+                            className={`px-2 py-1 cursor-pointer text-center text-[10px] font-semibold rounded border transition-all ${
+                              formContentType === fmt
+                                ? "bg-[#0052CC] text-white border-[#0052CC]"
+                                : "bg-[#F4F5F7] text-[#42526E] border-[#DFE1E6] hover:bg-[#EEF1F6]"
+                            }`}
+                          >
+                            {fmt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-5">
+                      <label className="text-xs text-[#5E6C84] font-semibold uppercase block mb-1">Encoding Strategy</label>
+                      <select
+                        value={formEncoding}
+                        onChange={(e) => setFormEncoding(e.target.value as "NONE" | "BASE64")}
+                        className="w-full bg-[#F4F5F7] border border-[#DFE1E6] rounded px-3 py-1.5 text-xs focus:outline-none focus:border-[#0052CC] text-[#091E42] cursor-pointer"
+                      >
+                        <option value="NONE">NONE (Plain string)</option>
+                        <option value="BASE64">BASE64 (Enables raw binary)</option>
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-12">
+                      <label className="text-xs text-[#5E6C84] font-semibold uppercase block mb-1">Buffered Script Payload</label>
+                      <textarea
+                        rows={4}
+                        value={formContent}
+                        onChange={(e) => setFormContent(e.target.value)}
+                        className="w-full bg-[#F4F5F7] border border-[#DFE1E6] rounded font-mono p-3 text-xs focus:outline-none focus:border-[#0052CC] text-[#091E42]"
+                      />
+                    </div>
+
+                    <div className="md:col-span-12 flex justify-end">
+                      <button
+                        type="submit"
+                        className="bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-semibold px-4 py-2.5 rounded flex items-center gap-1.5 cursor-pointer shadow-sm w-full md:w-auto justify-center"
+                      >
+                        <PlusCircle size={15} /> Queue Remote Print Job
+                      </button>
                     </div>
                   </div>
 
-                  <div className="md:col-span-12">
-                    <label className="text-xs text-[#5E6C84] font-semibold uppercase block mb-1">Buffered Script Payload</label>
-                    <textarea
-                      rows={3}
-                      value={formContent}
-                      onChange={(e) => setFormContent(e.target.value)}
-                      className="w-full bg-[#F4F5F7] border border-[#DFE1E6] rounded font-mono p-3 text-xs focus:outline-none focus:border-[#0052CC] text-[#091E42]"
-                    />
-                  </div>
+                  {/* Right Column: Realtime Spooler Preview & Safety Checker */}
+                  <div className="xl:col-span-5 border-t xl:border-t-0 xl:border-l border-[#DFE1E6] pt-4 xl:pt-0 xl:pl-5 flex flex-col gap-3">
+                    <div className="bg-[#FAFBFC] border border-[#DFE1E6] rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#42526E] flex items-center gap-1">
+                          <Sparkles size={13} className="text-[#FFAB00]" />
+                          Live Spooler Print Preview
+                        </span>
+                        <span className="text-[10px] font-mono bg-[#EAE6FF] text-[#0052CC] px-2 py-0.5 rounded font-bold">
+                          {formContentType}
+                        </span>
+                      </div>
 
-                  <div className="md:col-span-12 flex justify-end">
-                    <button
-                      type="submit"
-                      className="bg-[#0052CC] hover:bg-[#0747A6] text-white text-xs font-semibold px-4 py-2 rounded flex items-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <PlusCircle size={15} /> Queue Remote Print Job
-                    </button>
+                      {/* Content Render Core */}
+                      <div className="bg-white border border-[#DFE1E6] rounded p-2 overflow-hidden flex flex-col items-center justify-center min-h-[160px] relative shadow-inner">
+                        {formContentType === "ZPL" ? (
+                          <div className="w-full flex flex-col items-center">
+                            <span className="text-[10px] text-[#5E6C84] font-sans mb-1">ZPL Label Simulator (Labelary Rendering)</span>
+                            <img
+                              src={`https://api.labelary.com/v1/printers/8dpmm/labels/4x6/0/${encodeURIComponent(formContent.trim())}`}
+                              alt="ZPL Label Preview"
+                              referrerPolicy="no-referrer"
+                              className="max-h-[140px] max-w-full object-contain border border-[#DFE1E6] shadow-sm rounded bg-white"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const fb = e.currentTarget.nextSibling as HTMLDivElement;
+                                if (fb) fb.style.display = 'block';
+                              }}
+                            />
+                            <div className="hidden text-center text-xs text-[#5E6C84] p-3 border border-dashed border-[#DFE1E6] rounded w-full">
+                              <p className="font-semibold text-rose-600 mb-1">Unable to load active rendering</p>
+                              <pre className="text-[10px] bg-slate-50 p-1 text-left overflow-auto font-mono max-h-[80px]">
+                                {formContent}
+                              </pre>
+                            </div>
+                          </div>
+                        ) : formContentType === "PDF" ? (
+                          <div className="w-full h-full flex flex-col">
+                            <div className="flex items-center gap-2 mb-2 bg-[#F4F5F7] p-1.5 rounded text-[11px] font-mono text-[#5E6C84] w-full">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                              <span>PDF Page Vector detected (Base64)</span>
+                            </div>
+                            <iframe
+                              src={formContent.trim().startsWith("data:application/pdf;") ? formContent.trim() : `data:application/pdf;base64,${formContent.trim()}`}
+                              className="w-full h-[120px] border border-[#DFE1E6] rounded"
+                              title="PDF Spooler Preview"
+                            />
+                            <div className="text-[10px] text-[#5E6C84] mt-1 text-center font-sans">
+                              Size: {Math.round(formContent.length * 0.75)} bytes • Standard A4 Layout
+                            </div>
+                          </div>
+                        ) : formContentType === "ESC_POS" ? (
+                          <div className="w-full bg-[#FCF8E3] text-[#333333] font-mono p-3 rounded border border-dashed border-[#DFE1E6] text-xs shadow-sm max-h-[150px] overflow-y-auto">
+                            <div className="text-center border-b border-dashed border-[#333333]/30 pb-1 mb-2">
+                              <span className="font-bold block tracking-wider">*** SIMULATED RECEIPT ***</span>
+                              <span className="text-[9px] text-[#5E6C84]">ESC/POS Binary Handshake Decoded</span>
+                            </div>
+                            <div className="whitespace-pre text-left text-[11px] leading-tight">
+                              {(() => {
+                                try {
+                                  const decoded = formEncoding === "BASE64" ? atob(formContent.replace(/\s/g, "")) : formContent;
+                                  return decoded.replace(/[^\x20-\x7E\n\r]/g, " ").trim();
+                                } catch (e) {
+                                  return formContent.slice(0, 80) + "...";
+                                }
+                              })()}
+                            </div>
+                            <div className="text-center border-t border-dashed border-[#333333]/30 pt-2 mt-2 text-[9px] text-[#5E6C84]">
+                              End of Ticket Output
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full bg-slate-50 text-[#091E42] font-mono p-3 rounded border border-[#DFE1E6] text-xs max-h-[150px] overflow-y-auto">
+                            <div className="text-[10px] text-slate-500 border-b border-slate-200 pb-1 mb-1 font-bold">RAW / TEXT BUFFER SCRIPT:</div>
+                            <pre className="whitespace-pre-wrap text-[11px] leading-normal">{formContent || "Empty buffer contents"}</pre>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Safety Analysis Indicator */}
+                    {(() => {
+                      const targetPrn = printers.find(p => p.id === formPrinter);
+                      if (!targetPrn) return null;
+
+                      let status: "OPTIMAL" | "WARN" | "MISMATCH" = "OPTIMAL";
+                      let message = "";
+                      let explanation = "";
+
+                      if (targetPrn.type === "ESC_POS") {
+                        if (formContentType === "ESC_POS" || formContentType === "TEXT") {
+                          status = "OPTIMAL";
+                          message = "Optimal Alignment Verified";
+                          explanation = "The ESC/POS receipt commands perfectly match the thermal paper boundaries of TVS Electronics/Epson models.";
+                        } else if (formContentType === "ZPL") {
+                          status = "MISMATCH";
+                          message = "High Risk Mismatch Detected";
+                          explanation = "ZPL commands are proprietary to Zebra hardware. Sending ZPL code to a thermal receipt printer will dump pages of raw characters, wasting paper!";
+                        } else {
+                          status = "WARN";
+                          message = "Rendering Pipeline Required";
+                          explanation = "Standard ticket printers cannot parse vector PDF streams natively. Ensure you use the integrated Linux/CUPS spooler to safely scale text.";
+                        }
+                      } else if (targetPrn.type === "Zebra") {
+                        if (formContentType === "ZPL") {
+                          status = "OPTIMAL";
+                          message = "Optimal Alignment Verified";
+                          explanation = "ZPL command blocks perfectly fit Zebra thermal barcoding systems. Direct micro-kernel output will align perfectly.";
+                        } else if (formContentType === "ESC_POS") {
+                          status = "MISMATCH";
+                          message = "High Risk Mismatch Detected";
+                          explanation = "ESC/POS formats are incompatible with Zebra controllers. Sending receipt streams to Zebra prints garbled symbols, damaging labels.";
+                        } else {
+                          status = "WARN";
+                          message = "Check Label Layout Fit";
+                          explanation = "Check that the raw text or PDF aspect ratio fits standard label limits (e.g. 4x6 inch) to prevent horizontal clippings.";
+                        }
+                      } else if (targetPrn.type === "WindowsPrinter") {
+                        if (formContentType === "PDF") {
+                          status = "OPTIMAL";
+                          message = "Optimal Alignment Verified";
+                          explanation = "PDF is the native vector spooler input for office printers. Layout rasterization is verified safe and correct.";
+                        } else if (formContentType === "ZPL" || formContentType === "ESC_POS") {
+                          status = "WARN";
+                          message = "Driver Bypass Advisory";
+                          explanation = "Raw commands will bypass standard Windows printer drivers. If sent directly, pages might print as plain text code blocks.";
+                        }
+                      }
+
+                      return (
+                        <div className={`p-3 rounded-lg border text-xs ${
+                          status === "OPTIMAL" ? "bg-emerald-50 border-emerald-200 text-emerald-800" :
+                          status === "WARN" ? "bg-amber-50 border-amber-200 text-amber-800" :
+                          "bg-rose-50 border-rose-200 text-rose-800"
+                        }`}>
+                          <div className="flex items-center gap-1.5 font-bold mb-1">
+                            {status === "OPTIMAL" ? <ShieldCheck size={16} className="text-emerald-600" /> :
+                             status === "WARN" ? <AlertTriangle size={16} className="text-amber-600" /> :
+                             <AlertTriangle size={16} className="text-rose-600" />}
+                            <span>{message}</span>
+                          </div>
+                          <p className="m-0 leading-relaxed font-normal text-[11px] opacity-90">{explanation}</p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </form>
               </div>
@@ -1620,6 +1894,16 @@ namespace Agent.Worker
                   <div className="flex items-center space-x-2">
                     <span className="text-[10px] font-mono text-[#5E6C84]">Structured Logger [Console]</span>
                     <button
+                      onClick={() => setAutoScroll(prev => !prev)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-all cursor-pointer border whitespace-nowrap ${
+                        autoScroll
+                          ? "bg-[#002B75] hover:bg-[#0052CC] text-[#DFE1E6] border-[#0747A6]"
+                          : "bg-amber-600/30 hover:bg-amber-600/60 text-amber-200 border-amber-600/60"
+                      }`}
+                    >
+                      {autoScroll ? "Auto-Scroll: ON" : "Auto-Scroll: OFF"}
+                    </button>
+                    <button
                       onClick={handleClearQueueAndLogs}
                       className="px-2 py-0.5 bg-[#42526E]/40 hover:bg-[#42526E]/80 text-[#DFE1E6] text-[10px] font-semibold rounded transition-colors cursor-pointer border border-[#172B4D]"
                     >
@@ -1628,7 +1912,20 @@ namespace Agent.Worker
                   </div>
                 </div>
 
-                <div className="flex-1 font-mono text-xs text-[#DFE1E6] overflow-y-auto max-h-[300px] flex flex-col gap-1 pr-1 bg-[#0747A6]/5 p-2 rounded border border-[#172B4D]/40">
+                <div 
+                  ref={consoleContainerRef}
+                  onScroll={(e) => {
+                    const target = e.currentTarget;
+                    // Detect if the user is closely at the bottom (with a safe 40px buffer)
+                    const isAtBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 40;
+                    if (isAtBottom && !autoScroll) {
+                      setAutoScroll(true);
+                    } else if (!isAtBottom && autoScroll) {
+                      setAutoScroll(false);
+                    }
+                  }}
+                  className="flex-1 font-mono text-xs text-[#DFE1E6] overflow-y-auto max-h-[300px] flex flex-col gap-1 pr-1 bg-[#0747A6]/5 p-2 rounded border border-[#172B4D]/40"
+                >
                   {apiLogs.map((log, i) => {
                     let levelColor = "text-[#DFE1E6]";
                     if (log.level === "WARNING") {
@@ -1650,7 +1947,6 @@ namespace Agent.Worker
                       </div>
                     );
                   })}
-                  <div ref={consoleBottomRef} />
                 </div>
               </div>
 

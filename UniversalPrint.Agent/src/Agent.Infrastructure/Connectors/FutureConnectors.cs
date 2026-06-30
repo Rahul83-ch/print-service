@@ -30,6 +30,12 @@ namespace Agent.Infrastructure.Connectors
             throw new NotImplementedException("Brother thermal stream protocol is being configured. Expected Release: Q3.");
         }
 
+        public Task PrintBytesAsync(byte[] bytes, Printer printer, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Faking Brother printer raw bytes stream to {IP}:{Port}.", printer.IPAddress, printer.Port);
+            throw new NotImplementedException("Brother thermal stream protocol is being configured. Expected Release: Q3.");
+        }
+
         public Task<bool> ValidateConnectionAsync(Printer printer, CancellationToken cancellationToken)
         {
             return Task.FromResult(true);
@@ -51,6 +57,12 @@ namespace Agent.Infrastructure.Connectors
         public Task PrintAsync(PrintJob job, Printer printer, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Faking TSC print pipeline stream to {IP}:{Port}.", printer.IPAddress, printer.Port);
+            throw new NotImplementedException("TSC hardware interface protocol is being configured. Expected Release: Q3.");
+        }
+
+        public Task PrintBytesAsync(byte[] bytes, Printer printer, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Faking TSC print raw bytes stream to {IP}:{Port}.", printer.IPAddress, printer.Port);
             throw new NotImplementedException("TSC hardware interface protocol is being configured. Expected Release: Q3.");
         }
 
@@ -78,6 +90,12 @@ namespace Agent.Infrastructure.Connectors
             throw new NotImplementedException("PDF document render-to-stream compiler is being configured. Expected Release: Q4.");
         }
 
+        public Task PrintBytesAsync(byte[] bytes, Printer printer, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Faking PDF printer raw bytes stream to {IP}:{Port}.", printer.IPAddress, printer.Port);
+            throw new NotImplementedException("PDF document render-to-stream compiler is being configured. Expected Release: Q4.");
+        }
+
         public Task<bool> ValidateConnectionAsync(Printer printer, CancellationToken cancellationToken)
         {
             return Task.FromResult(true);
@@ -99,6 +117,12 @@ namespace Agent.Infrastructure.Connectors
         public Task PrintAsync(PrintJob job, Printer printer, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Targeting local Windows Spooler queue '{QueueName}'.", printer.PrinterName);
+            throw new NotImplementedException("Windows spool driver wrapper requires OS integration modules. Expected Release: Q4.");
+        }
+
+        public Task PrintBytesAsync(byte[] bytes, Printer printer, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Targeting local Windows Spooler raw bytes queue '{QueueName}'.", printer.PrinterName);
             throw new NotImplementedException("Windows spool driver wrapper requires OS integration modules. Expected Release: Q4.");
         }
 

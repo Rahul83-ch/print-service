@@ -62,7 +62,7 @@ namespace Agent.Infrastructure.Api
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = false
             };
-            _jsonOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+            _jsonOptions.Converters.Add(new SafeEnumConverterFactory());
         }
 
         /// <inheritdoc />

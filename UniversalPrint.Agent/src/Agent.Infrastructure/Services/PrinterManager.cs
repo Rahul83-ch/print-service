@@ -98,13 +98,32 @@ namespace Agent.Infrastructure.Services
                 try
                 {
                     // Find matching Zebra or Generic connector to run socket handshake checks
+                    IPrinterConnector? targetConn = null;
                     foreach (var conn in _connectors)
                     {
                         if (conn.GetType().Name.Contains(printer.PrinterType.ToString(), StringComparison.OrdinalIgnoreCase))
                         {
-                            isOnline = await conn.ValidateConnectionAsync(printer, cancellationToken);
+                            targetConn = conn;
                             break;
                         }
+                    }
+
+                    // Fallback to TcpPrinterConnector as a general fallback for ESC_POS or others
+                    if (targetConn == null)
+                    {
+                        foreach (var conn in _connectors)
+                        {
+                            if (conn is Agent.Infrastructure.Connectors.TcpPrinterConnector)
+                            {
+                                targetConn = conn;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (targetConn != null)
+                    {
+                        isOnline = await targetConn.ValidateConnectionAsync(printer, cancellationToken);
                     }
                 }
                 catch (Exception ex)

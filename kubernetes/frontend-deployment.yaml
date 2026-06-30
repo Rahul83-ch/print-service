@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: registry-local.flextronassembly.net/q2c/print-portal-frontend:0.0.2
+          image: registry-local.flextronassembly.net/q2c/print-portal-frontend:0.0.7
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

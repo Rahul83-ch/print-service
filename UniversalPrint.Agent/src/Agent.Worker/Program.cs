@@ -8,6 +8,7 @@ using Agent.Application.Interfaces;
 using Agent.Application.Services;
 using Agent.Infrastructure.Api;
 using Agent.Infrastructure.Connectors;
+using Agent.Infrastructure.Handlers;
 using Agent.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -62,16 +63,28 @@ namespace Agent.Worker
                     services.AddSingleton<IPrinterManager, PrinterManager>();
 
                     // 3. Register Strategy-Patterned Hardware Device Connectors
+                    services.AddTransient<TcpPrinterConnector>();
+                    services.AddTransient<IPrinterConnector, TcpPrinterConnector>();
                     services.AddTransient<IPrinterConnector, ZebraPrinterConnector>();
                     services.AddTransient<IPrinterConnector, BrotherPrinterConnector>();
                     services.AddTransient<IPrinterConnector, TscPrinterConnector>();
                     services.AddTransient<IPrinterConnector, PdfPrinterConnector>();
                     services.AddTransient<IPrinterConnector, WindowsPrinterConnector>();
 
-                    // 4. Register Multi-Job Parsing Pipeline
+                    // 4. Register Multi-Format Formatting Strategy Handlers
+                    services.AddTransient<EscPosPrinterHandler>();
+                    services.AddTransient<TextPrinterHandler>();
+                    services.AddTransient<ZplPrinterHandler>();
+                    services.AddTransient<PdfPrinterHandler>();
+
+                    // 5. Register strategy coordinator and factory
+                    services.AddTransient<IPrinterHandlerFactory, PrinterHandlerFactory>();
+                    services.AddTransient<IPrinterService, PrinterService>();
+
+                    // 6. Register Multi-Job Parsing Pipeline
                     services.AddTransient<IJobProcessor, JobProcessor>();
 
-                    // 5. Register Central Hosted background daemon thread
+                    // 7. Register Central Hosted background daemon thread
                     services.AddHostedService<Worker>();
                 });
     }

@@ -65,6 +65,7 @@ namespace Agent.Application.DTOs
         public PrinterType PrinterType { get; set; }
         public int Copies { get; set; } = 1;
         public ContentType ContentType { get; set; }
+        public string Encoding { get; set; } = "NONE";
         public string PrintContent { get; set; } = string.Empty;
         public DateTime SubmittedOn { get; set; }
     }

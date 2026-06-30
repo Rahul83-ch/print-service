@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: print-portal-frontend
-    image: "registry-local.flextronassembly.net/q2c/print-portal-frontend:0.0.2"
+    image: "registry-local.flextronassembly.net/q2c/print-portal-frontend:0.0.7"
     ports:
       - "3000:80"
     environment:
@@ -20,7 +20,7 @@ services:
       context: ./UniversalPrint.Agent
       dockerfile: Dockerfile
     container_name: universal-print-agent
-    image: "registry-local.flextronassembly.net/q2c/universal-print-agent:0.0.2"
+    image: "registry-local.flextronassembly.net/q2c/universal-print-agent:0.0.7"
     environment:
       - AgentSettings__AgentId=AGENT-DOCKER-001
       - AgentSettings__AgentName=Docker Compose Print Agent
