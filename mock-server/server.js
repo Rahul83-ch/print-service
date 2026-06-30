@@ -42,15 +42,28 @@ function initializeTestJob() {
   //     submittedOn: new Date().toISOString()
   //   }
   // ];
-    pendingJobs = [
+  //   pendingJobs = [
+  //   {
+  //     jobId: "JOB-91024",
+  //     printerId: "TVS3150",
+  //     printerType: "Zebra",
+  //     copies: 1,
+  //     contentType: "PDF",
+  //     encoding:  "BASE64",
+  //     printContent: "JVBERi0xLjQKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3VyY2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9CYXNlRm9udCAvSGVsdmV0aWNhIC9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nIC9OYW1lIC9GMSAvU3VidHlwZSAvVHlwZTEgL1R5cGUgL0ZvbnQKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL0NvbnRlbnRzIDcgMCBSIC9NZWRpYUJveCBbIDAgMCAxMDggMzYgXSAvUGFyZW50IDYgMCBSIC9SZXNvdXJjZXMgPDwKL0ZvbnQgMSAwIFIgL1Byb2NTZXQgWyAvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJIF0KPj4gL1JvdGF0ZSAwIC9UcmFucyA8PAoKPj4gCiAgL1R5cGUgL1BhZ2UKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL1BhZ2VNb2RlIC9Vc2VOb25lIC9QYWdlcyA2IDAgUiAvVHlwZSAvQ2F0YWxvZwo+PgplbmRvYmoKNSAwIG9iago8PAovQXV0aG9yIChcKGFub255bW91c1wpKSAvQ3JlYXRpb25EYXRlIChEOjIwMjYwNjE2MTQyMDAzKzAwJzAwJykgL0NyZWF0b3IgKFwodW5zcGVjaWZpZWRcKSkgL0tleXdvcmRzICgpIC9Nb2REYXRlIChEOjIwMjYwNjE2MTQyMDAzKzAwJzAwJykgL1Byb2R1Y2VyIChSZXBvcnRMYWIgUERGIExpYnJhcnkgLSBcKG9wZW5zb3VyY2VcKSkgCiAgL1N1YmplY3QgKFwodW5zcGVjaWZpZWRcKSkgL1RpdGxlIChcKGFub255bW91c1wpKSAvVHJhcHBlZCAvRmFsc2UKPj4KZW5kb2JqCjYgMCBvYmoKPDwKL0NvdW50IDEgL0tpZHMgWyAzIDAgUiBdIC9UeXBlIC9QYWdlcwo+PgplbmRvYmoKNyAwIG9iago8PAovRmlsdGVyIFsgL0FTQ0lJODVEZWNvZGUgL0ZsYXRlRGVjb2RlIF0gL0xlbmd0aCAxNDIKPj4Kc3RyZWFtCkdhcHBVNFVRZywoZSI2YWBLVyoyRUNBO1dfOG5yUHIwXEswInAsUzFyZTk1XitVaCUhXVFsbldASS8rQT4yYVdQUXBWZnBVXXBCVS1oaGNdT1lxLnRDLmY+L2o2YzNPXlBDL1cqRyYmSGlJPV82YTpDSDMhcmo2SVpeTy9kb1JYLzI1JD9mPWFUcm9Afj5lbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA4CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDA2MSAwMDAwMCBuIAowMDAwMDAwMDkyIDAwMDAwIG4gCjAwMDAwMDAxOTkgMDAwMDAgbiAKMDAwMDAwMDM5MSAwMDAwMCBuIAowMDAwMDAwNDU5IDAwMDAwIG4gCjAwMDAwMDA3MzkgMDAwMDAgbiAKMDAwMDAwMDc5OCAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9JRCAKWzw4NTE4ZGQyZmU3OTUxNGExZDQ5YWM4MDI5NDEwMTJjYz48ODUxOGRkMmZlNzk1MTRhMWQ0OWFjODAyOTQxMDEyY2M+XQolIFJlcG9ydExhYiBnZW5lcmF0ZWQgUERGIGRvY3VtZW50IC0tIGRpZ2VzdCAob3BlbnNvdXJjZSkKCi9JbmZvIDUgMCBSCi9Sb290IDQgMCBSCi9TaXplIDgKPj4Kc3RhcnR4cmVmCjEwMzAKJSVFT0YK",
+  //     submittedOn: new Date().toISOString()
+  //   }
+  // ];
+
+      pendingJobs = [
     {
       jobId: "JOB-91024",
       printerId: "TVS3150",
-      printerType: "WindowsPrinter",
+      printerType: "Zebra",
       copies: 1,
-      contentType: "PDF",
-      encoding:  "BASE64",
-      printContent: "JVBERi0xLjQKJZOMi54gUmVwb3J0TGFiIEdlbmVyYXRlZCBQREYgZG9jdW1lbnQgKG9wZW5zb3VyY2UpCjEgMCBvYmoKPDwKL0YxIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9CYXNlRm9udCAvSGVsdmV0aWNhIC9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nIC9OYW1lIC9GMSAvU3VidHlwZSAvVHlwZTEgL1R5cGUgL0ZvbnQKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL0NvbnRlbnRzIDcgMCBSIC9NZWRpYUJveCBbIDAgMCAxMDggMzYgXSAvUGFyZW50IDYgMCBSIC9SZXNvdXJjZXMgPDwKL0ZvbnQgMSAwIFIgL1Byb2NTZXQgWyAvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJIF0KPj4gL1JvdGF0ZSAwIC9UcmFucyA8PAoKPj4gCiAgL1R5cGUgL1BhZ2UKPj4KZW5kb2JqCjQgMCBvYmoKPDwKL1BhZ2VNb2RlIC9Vc2VOb25lIC9QYWdlcyA2IDAgUiAvVHlwZSAvQ2F0YWxvZwo+PgplbmRvYmoKNSAwIG9iago8PAovQXV0aG9yIChcKGFub255bW91c1wpKSAvQ3JlYXRpb25EYXRlIChEOjIwMjYwNjE2MTQyMDAzKzAwJzAwJykgL0NyZWF0b3IgKFwodW5zcGVjaWZpZWRcKSkgL0tleXdvcmRzICgpIC9Nb2REYXRlIChEOjIwMjYwNjE2MTQyMDAzKzAwJzAwJykgL1Byb2R1Y2VyIChSZXBvcnRMYWIgUERGIExpYnJhcnkgLSBcKG9wZW5zb3VyY2VcKSkgCiAgL1N1YmplY3QgKFwodW5zcGVjaWZpZWRcKSkgL1RpdGxlIChcKGFub255bW91c1wpKSAvVHJhcHBlZCAvRmFsc2UKPj4KZW5kb2JqCjYgMCBvYmoKPDwKL0NvdW50IDEgL0tpZHMgWyAzIDAgUiBdIC9UeXBlIC9QYWdlcwo+PgplbmRvYmoKNyAwIG9iago8PAovRmlsdGVyIFsgL0FTQ0lJODVEZWNvZGUgL0ZsYXRlRGVjb2RlIF0gL0xlbmd0aCAxNDIKPj4Kc3RyZWFtCkdhcHBVNFVRZywoZSI2YWBLVyoyRUNBO1dfOG5yUHIwXEswInAsUzFyZTk1XitVaCUhXVFsbldASS8rQT4yYVdQUXBWZnBVXXBCVS1oaGNdT1lxLnRDLmY+L2o2YzNPXlBDL1cqRyYmSGlJPV82YTpDSDMhcmo2SVpeTy9kb1JYLzI1JD9mPWFUcm9Afj5lbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA4CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDA2MSAwMDAwMCBuIAowMDAwMDAwMDkyIDAwMDAwIG4gCjAwMDAwMDAxOTkgMDAwMDAgbiAKMDAwMDAwMDM5MSAwMDAwMCBuIAowMDAwMDAwNDU5IDAwMDAwIG4gCjAwMDAwMDA3MzkgMDAwMDAgbiAKMDAwMDAwMDc5OCAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9JRCAKWzw4NTE4ZGQyZmU3OTUxNGExZDQ5YWM4MDI5NDEwMTJjYz48ODUxOGRkMmZlNzk1MTRhMWQ0OWFjODAyOTQxMDEyY2M+XQolIFJlcG9ydExhYiBnZW5lcmF0ZWQgUERGIGRvY3VtZW50IC0tIGRpZ2VzdCAob3BlbnNvdXJjZSkKCi9JbmZvIDUgMCBSCi9Sb290IDQgMCBSCi9TaXplIDgKPj4Kc3RhcnR4cmVmCjEwMzAKJSVFT0YK",
+      contentType: "ZPL",
+      encoding:  "NONE",
+      printContent: "^XA\n^PW472\n^LL118\n^FO40,30\n^A0N,40,40\n^FDTEST LABEL^FS\n^FO40,75\n^A0N,25,25\n^FD60mm x 15mm^FS\n^XZ",
       submittedOn: new Date().toISOString()
     }
   ];
@@ -120,8 +133,8 @@ app.post('/api/agents/register', (req, res) => {
       {
         printerId: "TVS3150",
         printerName: "TVS Electronics RP3150 STAR",
-        type : "WindowsPrinter",
-        ipAddress: "174.156.6.177",//"174.156.5.178",
+        type : "Zebra",
+        ipAddress: "174.156.5.161",//"174.156.5.178",
         port: 9100,
         isActive: true,
         // isOnline: true 
@@ -172,7 +185,7 @@ app.post('/api/jobs/:jobId/failed', (req, res) => {
 // 6. Trigger custom job (via browser or curl)
 app.get('/trigger', (req, res) => {
   initializeTestJob();
-  res.send(`<h1>Job Triggered!</h1><p>Queued print job JOB-91024 targeting Samsung M2060 Series (192.168.1.50:9100).</p><p>Go to the Agent console to see it print.</p>`);
+  res.send(`<h1>Job Triggered!</h1><p>Queued print job.</p>`);
 });
 
 // Start Express server
