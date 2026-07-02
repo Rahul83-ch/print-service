@@ -11,6 +11,7 @@ using Agent.Application.Interfaces;
 using Agent.Domain.Entities;
 using Agent.Infrastructure.Connectors;
 using Microsoft.Extensions.Logging;
+using PDFtoZPL;
 
 namespace Agent.Infrastructure.Handlers
 {
@@ -32,7 +33,7 @@ namespace Agent.Infrastructure.Handlers
         {
             _logger.LogInformation("ZplPrinterHandler: Processing print job '{JobId}' for Zebra layout...", job.JobId);
 
-            if (string.IsNullOrWhiteSpace(job.PrintContent))
+            if (string.IsNullOrEmpty(job.PrintContent))
             {
                 throw new ArgumentException("ZPL print content is empty.");
             }
@@ -51,27 +52,25 @@ namespace Agent.Infrastructure.Handlers
             }
 
             // If we have multiple copies requested, we duplicate the structured ZPL segments
-            byte[] finalBytes;
+            string zpl = ConvertPdfToZpl(zplBytes, pageIndex: 0, dpi: 203);
+            if (string.IsNullOrWhiteSpace(zpl))
+                throw new InvalidOperationException("Failed to convert PDF to ZPL.");
+
             if (job.Copies > 1)
             {
-                _logger.LogInformation("ZplPrinterHandler: Replicating payload {Copies} times", job.Copies);
-                
-                // Duplicate standard ZPL strings first for correct alignment
-                string textSegment = Encoding.UTF8.GetString(zplBytes);
-                var sb = new StringBuilder();
-                for (int i = 0; i < job.Copies; i++)
-                {
-                    sb.AppendLine(textSegment);
-                }
-                finalBytes = Encoding.UTF8.GetBytes(sb.ToString());
+                zpl = zpl.Replace("^XZ", $"^PQ{job.Copies}^XZ");
             }
-            else
-            {
-                finalBytes = zplBytes;
-            }
-
             _logger.LogInformation("ZplPrinterHandler: Relaying ZPL formatted bytes to network printer via generic TCP connector...");
-            await _connector.PrintBytesAsync(finalBytes, printer, cancellationToken);
+            await _connector.PrintZplAsync(zpl, printer, cancellationToken);
+        }
+
+        public static string ConvertPdfToZpl(byte[] pdfBytes, int pageIndex = 0, int dpi = 0)
+        {
+            var options = new PdfOptions
+            {
+                Dpi = dpi,
+            };
+            return PDFtoZPL.Conversion.ConvertPdfPage(pdfBytes, page: pageIndex, pdfOptions: options);
         }
     }
 }
