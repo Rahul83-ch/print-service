@@ -6,3 +6,14 @@ coverage/
 *.log
 .env*
 !.env.example
+/UniversalPrint.Agent/.vs
+/.vs
+/UniversalPrint.Agent/src/Agent.Application/bin/Debug/net8.0
+/UniversalPrint.Agent/src/Agent.Application/obj
+/UniversalPrint.Agent/src/Agent.Domain/bin/Debug/net8.0
+/UniversalPrint.Agent/src/Agent.Domain/obj/Debug/net8.0
+/UniversalPrint.Agent/src/Agent.Domain/obj
+/UniversalPrint.Agent/src/Agent.Infrastructure/bin/Debug/net8.0
+/UniversalPrint.Agent/src/Agent.Infrastructure/obj
+/UniversalPrint.Agent/src/Agent.Worker/bin/Debug/net8.0
+/UniversalPrint.Agent/src/Agent.Worker/obj
