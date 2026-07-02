@@ -95,6 +95,34 @@ namespace Agent.Infrastructure.Connectors
             }
         }
 
+        public async Task PrintZplAsync(string zpl, Printer printer, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(zpl))
+            {
+                throw new ArgumentException("The raw byte array to transmit is empty or unallocated.");
+            }
+
+            _logger.LogInformation("TCP socket broadcast started: Sending {ByteLength} raw bytes to device health at {IP}:{Port}",
+                zpl.Length, printer.IPAddress, printer.Port);
+
+            using var tcpClient = new TcpClient();
+
+            // Connect with cancellation support
+            _logger.LogDebug("Opening raw TCP socket with target {IP}:{Port}...", printer.IPAddress, printer.Port);
+            await tcpClient.ConnectAsync(printer.IPAddress, printer.Port, cancellationToken);
+
+            using NetworkStream networkStream = tcpClient.GetStream();
+            _logger.LogInformation("TCP connection established successfully with printer at {IP}:{Port}.", printer.IPAddress, printer.Port);
+
+            byte[] zplBytes = Encoding.ASCII.GetBytes(zpl);
+            await networkStream.WriteAsync(zplBytes.AsMemory(), cancellationToken);
+            await networkStream.FlushAsync(cancellationToken);
+
+            await Task.Delay(300, cancellationToken);
+
+            _logger.LogInformation("Transmission of raw packet stream (Length: {ByteLength} bytes) completed successfully on generic connector.", zplBytes.Length);
+        }
+
         public void Dispose()
         {
             GC.SuppressFinalize(this);
